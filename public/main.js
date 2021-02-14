@@ -17,13 +17,13 @@ $(function () {
 	];
 
 	// variable instantiation
-	const window = $(window);
+	const $window = $(window);
 	const $usernameInput = $(".usernameInput");
 	const $messages = $(".messages");
 	const $inputMessage = $(".inputMessage");
 
-	const $loginPage = $(".loginPage");
-	const $chatPage = $(".chatPage");
+	const $loginPage = $(".login.page");
+	const $chatPage = $(".chat.page");
 
 	const socket = io();
 
@@ -54,6 +54,28 @@ $(function () {
 		return COLORS[index];
 	};
 
+	const cleanInput = input => {
+		return $("<div/>").text(input).html();
+	};
+
+	const updateTyping = () => {
+		if (connected) {
+			if (!typing) {
+				typing = true;
+				socket.emit("typing");
+			}
+			lastTypingTime = new Date().getTime();
+			setTimeout(() => {
+				const typingTimer = new Date().getTime();
+				const timeDiff = typingTimer - lastTypingTime;
+				if (timeDiff >= TYPING_TIMER_LENGTH && typing) {
+					socket.emit("stop typing");
+					typing = false;
+				}
+			}, TYPING_TIMER_LENGTH);
+		}
+	};
+
 	const addMessageElement = (el, options) => {
 		const $el = $(el);
 
@@ -63,8 +85,8 @@ $(function () {
 		if (typeof options.fade === "undefined") {
 			options.fade = true;
 		}
-		if (typeof options.pretend === "undefined") {
-			options.pretend = true;
+		if (typeof options.prepend === "undefined") {
+			options.prepend = false;
 		}
 
 		if (options.fade) {
@@ -82,10 +104,10 @@ $(function () {
 	const addParticipantsMessage = data => {
 		let message = "";
 
-		if (data.message === 1) {
+		if (data.numOfUsers === 1) {
 			message += "There is 1 participant";
 		} else {
-			message += `There are ${data.numUsers} participants`;
+			message += `There are ${data.numOfUsers} participants`;
 		}
 		log(message);
 	};
@@ -127,7 +149,7 @@ $(function () {
 		}
 
 		// adding the message 'X is typing' to screen
-		const $usernameDiv = $("<span class='username'/>")
+		const $usernameDiv = $('<span class="username"/>')
 			.text(data.username)
 			.css("color", getUsernameColor(data.username));
 
@@ -146,4 +168,80 @@ $(function () {
 		*/
 		addMessageElement($messagesDiv, options);
 	};
+
+	const addChatTyping = data => {
+		data.typing = true;
+		data.message = "is typing...";
+		addChatMessage(data);
+	};
+	const removeChatTyping = data => {
+		$getTypingMessage(data).fadeOut(function () {
+			$(this).remove();
+		});
+	};
+
+	$window.keydown(event => {
+		if (!(event.ctrlKey || event.metaKey || event.altKey)) {
+			$currentInput.focus();
+		}
+
+		// user hits enter
+		if (event.which === 13) {
+			if (username) {
+				sendMessage();
+				socket.emit("stop typing");
+				typing = false;
+			} else {
+				setUsername();
+			}
+		}
+	});
+
+	$inputMessage.on("input", () => {
+		updateTyping();
+	});
+
+	$loginPage.click(() => {
+		$currentInput.focus();
+	});
+
+	$inputMessage.click(() => {
+		$inputMessage.focus();
+	});
+
+	socket.on("login", data => {
+		connected = true;
+		const message = "Welcome to Room: ";
+		log(message, {
+			prepend: true,
+		});
+		addParticipantsMessage(data);
+	});
+
+	socket.on("new message", data => {
+		addChatMessage(data);
+	});
+
+	socket.on("user joined", data => {
+		log(`${data.username} has joined`);
+		addParticipantsMessage(data);
+	});
+
+	socket.on("user left", data => {
+		log(`${data.username} has left`);
+		addParticipantsMessage(data);
+		removeChatTyping(data);
+	});
+
+	socket.on("typing", data => {
+		addChatTyping(data);
+	});
+
+	socket.on("stop typing", data => {
+		removeChatTyping(data);
+	});
+
+	socket.on("disconnect", () => {
+		log("You have been disconneted");
+	});
 });

@@ -1,8 +1,8 @@
-var express = require("express");
+const express = require("express");
+const app = express();
 const path = require("path");
-var app = express();
-var http = require("http").createServer(app);
-var io = require("socket.io")(http);
+const http = require("http").createServer(app);
+const io = require("socket.io")(http);
 const port = process.env.PORT || 3000;
 
 // Routing
@@ -27,6 +27,7 @@ io.on("connection", socket => {
 	socket.on("add user", username => {
 		// if user is already added
 		if (addedUser) return;
+		console.log(`[CONNECTED]: New user ${username} has connected`);
 
 		// store username in socket
 		socket.username = username;
@@ -47,13 +48,13 @@ io.on("connection", socket => {
 
 	//notify users which user(s) is/are typing
 	socket.on("typing", () => {
-		socket.broadcast.emit("typing", () => {
-			username: socket.username;
+		socket.broadcast.emit("typing", {
+			username: socket.username,
 		});
 	});
 	socket.on("stop typing", () => {
-		socket.broadcast.emit("stop typing", () => {
-			username: socket.username;
+		socket.broadcast.emit("stop typing", {
+			username: socket.username,
 		});
 	});
 
