@@ -20,3 +20,4 @@ User logs in with a name
 - typing -> notify other users which user(s) is/are typing
 - stop typing -> remove the typing notification when user stops typing
 - user left -> notify other users which user has left and update total number of users
+- new message -> add new message to window
