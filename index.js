@@ -9,7 +9,7 @@ const port = process.env.PORT || 3000;
 app.use(express.static(path.join(__dirname, "/public")));
 
 http.listen(port, () => {
-	console.log(`[STARTED] Server started at port:${port}`);
+	console.log(`[STARTED] Server started at port: ${port}`);
 });
 
 let numOfUsers = 0;
@@ -18,6 +18,7 @@ io.on("connection", socket => {
 
 	// new message sent by user
 	socket.on("new message", data => {
+		console.log(`[SENT] User: ${socket.username} has sent a message`);
 		socket.broadcast.emit("new message", {
 			username: socket.username,
 			message: data,
@@ -27,7 +28,7 @@ io.on("connection", socket => {
 	socket.on("add user", username => {
 		// if user is already added
 		if (addedUser) return;
-		console.log(`[CONNECTED]: New user ${username} has connected`);
+		console.log(`[CONNECTED] New user ${username} has connected`);
 
 		// store username in socket
 		socket.username = username;
@@ -60,6 +61,7 @@ io.on("connection", socket => {
 
 	socket.on("disconnect", () => {
 		if (addedUser) {
+			console.log(`[DISCONNECTED] User ${socket.username} has disconnected`);
 			--numOfUsers;
 
 			socket.broadcast.emit("user left", {

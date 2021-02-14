@@ -21,3 +21,7 @@ User logs in with a name
 - stop typing -> remove the typing notification when user stops typing
 - user left -> notify other users which user has left and update total number of users
 - new message -> add new message to window
+
+## Refrence used:
+
+[ Socket demo ](https://socket.io/demos/chat/)
