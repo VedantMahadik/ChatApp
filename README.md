@@ -10,7 +10,6 @@ User logs in with a name
 - socket.io
 - socket events
 - Ip address
--
 
 ## Different events:
 
