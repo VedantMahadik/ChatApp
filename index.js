@@ -1,48 +1,70 @@
-var app = require("express")();
+var express = require("express");
+const path = require("path");
+var app = express();
 var http = require("http").createServer(app);
 var io = require("socket.io")(http);
+const port = process.env.PORT || 3000;
 
-username = "user";
-app.get("/", (req, res) => {
-	res.sendFile(__dirname + "/form.html");
-});
-app.get("/index", (req, res) => {
-	res.sendFile(__dirname + "/index.html");
-});
+// Routing
+app.use(express.static(path.join(__dirname, "/public")));
 
-http.listen(3000, () => {
-	console.log("[STARTED] Server started at port 3000");
+http.listen(port, () => {
+	console.log(`[STARTED] Server started at port:${port}`);
 });
 
-io.on("connected", socket => {
-	console.log(`${username} has joined`);
+let numOfUsers = 0;
+io.on("connection", socket => {
+	let addedUser = false;
+
+	// new message sent by user
+	socket.on("new message", data => {
+		socket.broadcast.emit("new message", {
+			username: socket.username,
+			message: data,
+		});
+	});
+
+	socket.on("add user", username => {
+		// if user is already added
+		if (addedUser) return;
+
+		// store username in socket
+		socket.username = username;
+		++numOfUsers;
+		addedUser = true;
+
+		// on successful login change number of users
+		socket.emit("login", {
+			numOfUsers: numOfUsers,
+		});
+
+		// notify users about the new joined user and total number of users
+		socket.broadcast.emit("user joined", {
+			username: socket.username,
+			numOfUsers: numOfUsers,
+		});
+	});
+
+	//notify users which user(s) is/are typing
+	socket.on("typing", () => {
+		socket.broadcast.emit("typing", () => {
+			username: socket.username;
+		});
+	});
+	socket.on("stop typing", () => {
+		socket.broadcast.emit("stop typing", () => {
+			username: socket.username;
+		});
+	});
+
 	socket.on("disconnect", () => {
-		console.log(`${username} has left`);
-	});
-});
-io.on("connection", socket => {
-	socket.on("chat message", msg => {
-		console.log("message: " + msg);
-	});
-	socket.on("username", content => {
-		username = content;
-	});
-});
+		if (addedUser) {
+			--numOfUsers;
 
-io.on("connection", socket => {
-	socket.on("chat message", msg => {
-		content = { username, msg };
-		io.emit("chat message", content);
-	});
-});
-
-// check if user is typing
-io.on("connection", socket => {
-	/*from server side we will emit 'display' event once the user starts typing
-	so that on the client side we can capture this event and display 
-	'<data.user> is typing...' */
-	socket.on("typing", data => {
-		if (data.typing == true) io.emit("display", data);
-		else io.emit("display", data);
+			socket.broadcast.emit("user left", {
+				username: socket.username,
+				numOfUsers: numOfUsers,
+			});
+		}
 	});
 });
